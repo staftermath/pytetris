@@ -1,4 +1,4 @@
-import sys
+import sys, os
 
 class PyTetris:
     """
@@ -25,17 +25,18 @@ class PyTetris:
                               "J_r":[[0,1],[0,2],[1,1]] \
                               }
 
-    def PlotPiece(self, type, position):
-        ploted = [position[:]]
-        for i in range(1,3):
-            ploted[i][self.__allshapes__[type][0]] += self.__allshapes__[type][1]
+    def PlotPiece(self, piece):
+        ploted = [list(piece.values())[0][:] for _ in range(4)]
+        for i in range(1,4):
+            ploted[i][self.__allshapes__[list(piece.keys())[0]][i-1][0]] += \
+                self.__allshapes__[list(piece.keys())[0]][i-1][1]
         return ploted
 
     def PrintScreen(self, direction = None, rotation = None, removal = None):
         screen = self.__screen__[:]
-        # for block in self.__tetris__:
-        #     screen[block[1]][block[0]] = self.__block__
-        screen = "".join(["".join(x)+"\n" for x in screen])
+        for block in self.PlotPiece(self.__tetris__):
+            screen[block[1]][block[0]] = self.__block__
+        screen = "".join(["".join(x)+"\n" for x in reversed(screen)])
         if (direction, rotation, removal).count(None) == 3:
             # sys.stdout.write("="*(self.__size__[0]+2)+"\n")
             # sys.stdout.write(("|"+" "*self.__size__[0]+"|\n")*(self.__size__[1]))
@@ -63,11 +64,12 @@ class PyTetris:
         pass
 
 if __name__ == "__main__":
+    os.system('cls')
     testPy = PyTetris(3)
     control = "start"
     while control != "Q":
         if control == "flush":
-            sys.stdout.flush()
+            os.system('cls')
         else:
             testPy.PrintScreen()
         control = input("Input Control: ")
