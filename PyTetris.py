@@ -1,4 +1,4 @@
-import sys, os, copy
+import sys, os, copy, random
 
 class PyTetris:
     """
@@ -11,23 +11,25 @@ class PyTetris:
         self.__score__ = 0
         self.__block__ = "O "
         if not size:
-            size = [10,22]
+            self.__size__ = [10,22]
             # Default Size [10, 22]
-        self.__screen__ =  [[self.__block__ for _ in range(size[0]+2)]] + \
-                            [[self.__block__] +["  " for _ in range(size[0])] + [self.__block__]
-                                         for _ in range(size[1])] + \
-                                [[self.__block__ for _ in range(size[0]+2)]]
-        self.__stacks__ = None
-        self.__tetris__ = {"J_l":[5,10]}
-        self.__allshapes__ = {"J_d":[[1,0],[0,-1],[0,-2]], \
-                              "J_l":[[-1,0],[-2,0],[0,-1]], \
-                              "J_u":[[-1,0],[0,1],[0,2]], \
-                              "J_r":[[0,1],[1,0],[2,0]] \
+        else:
+            self.__size__ = size[:]
+        self.__screen__ =  [[self.__block__ for _ in range(self.__size__[0]+2)]] + \
+                            [[self.__block__] +["  " for _ in range(self.__size__[0])] + [self.__block__]
+                                         for _ in range(self.__size__[1])] + \
+                                [[self.__block__ for _ in range(self.__size__[0]+2)]]
+        self.__stacks__ = [[5, 21], [4, 21], [3, 21], [5, 22]]
+        self.__tetris__ = {"J_l":[5,16]}
+        self.__allshapes__ = {"J_d":[[1,0],[0,1],[0,2]], \
+                              "J_l":[[-1,0],[-2,0],[0,1]], \
+                              "J_u":[[-1,0],[0,-1],[0,-2]], \
+                              "J_r":[[0,-1],[1,0],[2,0]] \
                               }
-        self.__rotate__ = {"J_l":[["J_d","J_u"], [[-1,1],[-1,-1]]], \
-                            "J_d":[["J_r","J_l"],[[-1,-2],[1,-1]]], \
-                            "J_r":[["J_u","J_d"],[[1,0],[1,2]]], \
-                            "J_u":[["J_l", "J_r"],[[1,1],[-1,0]]]}
+        self.__rotate__ = {"J_l":[["J_d","J_u"], [[-1,-1],[-1,1]]], \
+                            "J_d":[["J_r","J_l"],[[-1,2],[1,1]]], \
+                            "J_r":[["J_u","J_d"],[[1,0],[1,-2]]], \
+                            "J_u":[["J_l", "J_r"],[[1,-1],[-1,0]]]}
 
     def PlotPiece(self, piece):
         ploted = [list(piece.values())[0][:]]
@@ -43,7 +45,9 @@ class PyTetris:
         # thisBlock = list(self.__tetris__.items())[0][1]
         for block in self.PlotPiece(self.__tetris__):
             screen[block[1]][block[0]] = self.__block__
-        screen = "".join(["".join(x)+"\n" for x in reversed(screen)])
+        for block in self.__stacks__:
+            screen[block[1]][block[0]] = self.__block__
+        screen = "".join(["".join(x)+"\n" for x in screen])
         if (direction, rotation, removal).count(None) == 3:
             # sys.stdout.write("="*(self.__size__[0]+2)+"\n")
             # sys.stdout.write(("|"+" "*self.__size__[0]+"|\n")*(self.__size__[1]))
@@ -64,18 +68,52 @@ class PyTetris:
         center[1] += self.__rotate__[shape][1][direction][1]
         self.__tetris__ = {newshape:center}
     
-    def Move(self, shape, direction):
-        pass
+    def Move(self, direction):
+        value = copy.deepcopy(list(self.__tetris__.items())[0])
+        if direction == "down":
+            value[1][1] += 1
+        elif direction == "left":
+            value[1][0] -= 1 
+        elif direction == "right":
+            value[1][0] += 1
+        if not self.BoundaryCheck(block=self.PlotPiece({value[0]:value[1]}), action=direction):
+            self.__tetris__ = {value[0]:value[1]}
+        return None
     
     def Remove(self, rows):
         pass
     
     def GenerateBlocks(self):
-        pass
+        newblock = random.sample(self.__rotate__.keys(),1)[0]
+        self.__tetris__={newblock:[5,0]}
     
     def AddScore(self, score):
         pass
     
+    def BoundaryCheck(self, block,action):
+        returnBool = False
+        if action != "down":
+            for x in block:
+                if x[0]<0 or x[0]>self.__size__[0] or x[1]<0 or x[1]>self.__size__[1]: 
+                    returnBool = True
+                    break
+                if x in self.__stacks__:
+                    returnBool = True
+                    break
+        else:
+            for x in block:
+                if x[1]>self.__size__[1] or x in self.__stacks__:
+                    value = list(self.__tetris__.items())[0]
+                    value[1][1] -=1
+                    self.__stacks__.extend(self.PlotPiece({value[0]:value[1]}))
+                    returnBool = True
+                    self.GenerateBlocks()
+                    break
+                if x[0]<0 or x[0]>=self.__size__[0] or x[1]<0: 
+                    returnBool = True
+                    break
+        return returnBool
+
     def GameOver(self):
         pass
 
@@ -95,10 +133,24 @@ if __name__ == "__main__":
             testPy.Rotate("counter")
             os.system('cls')
             testPy.PrintScreen()
+        elif control == "down":
+            testPy.Move("down")
+            os.system('cls')
+            testPy.PrintScreen()
+        elif control == "left":
+            testPy.Move("left")
+            os.system('cls')
+            testPy.PrintScreen()
+        elif control == "right":
+            testPy.Move("right")
+            os.system('cls')
+            testPy.PrintScreen()
         elif control == "shape":
-            print(testPy.__tetris__)
+            print(testPy.PlotPiece(testPy.__tetris__))
         elif control == "screen":
             print(testPy.__screen__)
+        elif control == "stack":
+            print(testPy.__stacks__)
         else:
             testPy.PrintScreen()
         control = input("Input Control: ")
