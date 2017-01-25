@@ -1,4 +1,4 @@
-import sys, os, copy, random
+import sys, os, copy, random, msvcrt
 
 class PyTetris:
     """
@@ -30,6 +30,10 @@ class PyTetris:
                             "J_d":[["J_r","J_l"],[[-1,2],[1,1]]], \
                             "J_r":[["J_u","J_d"],[[1,0],[1,-2]]], \
                             "J_u":[["J_l", "J_r"],[[1,-1],[-1,0]]]}
+        self.__move__ = {"down":[0,1], \
+                        "left":[-1,0], \
+                        "right":[1,0]
+                        }
 
     def PlotPiece(self, piece):
         ploted = [list(piece.values())[0][:]]
@@ -66,16 +70,13 @@ class PyTetris:
         newshape = self.__rotate__[shape][0][direction]
         center[0] += self.__rotate__[shape][1][direction][0]
         center[1] += self.__rotate__[shape][1][direction][1]
-        self.__tetris__ = {newshape:center}
+        if not self.BoundaryCheck(block=self.PlotPiece({newshape:center}), action=direction):
+            self.__tetris__ = {newshape:center}
     
     def Move(self, direction):
         value = copy.deepcopy(list(self.__tetris__.items())[0])
-        if direction == "down":
-            value[1][1] += 1
-        elif direction == "left":
-            value[1][0] -= 1 
-        elif direction == "right":
-            value[1][0] += 1
+        value[1][0] += self.__move__[direction][0]
+        value[1][1] += self.__move__[direction][1]
         if not self.BoundaryCheck(block=self.PlotPiece({value[0]:value[1]}), action=direction):
             self.__tetris__ = {value[0]:value[1]}
         return None
@@ -94,7 +95,7 @@ class PyTetris:
         returnBool = False
         if action != "down":
             for x in block:
-                if x[0]<0 or x[0]>self.__size__[0] or x[1]<0 or x[1]>self.__size__[1]: 
+                if x[0]<=0 or x[0]>self.__size__[0] or x[1]>=self.__size__[1]:
                     returnBool = True
                     break
                 if x in self.__stacks__:
@@ -104,12 +105,12 @@ class PyTetris:
             for x in block:
                 if x[1]>self.__size__[1] or x in self.__stacks__:
                     value = list(self.__tetris__.items())[0]
-                    value[1][1] -=1
+                    # value[1][1] -=1
                     self.__stacks__.extend(self.PlotPiece({value[0]:value[1]}))
                     returnBool = True
                     self.GenerateBlocks()
                     break
-                if x[0]<0 or x[0]>=self.__size__[0] or x[1]<0: 
+                if x[0]<=0 or x[0]>self.__size__[0]: 
                     returnBool = True
                     break
         return returnBool
@@ -124,24 +125,24 @@ if __name__ == "__main__":
     while control != "Q":
         if control == "flush":
             os.system('cls')
-        elif control == "L":
+        elif control == "j":
             testPy.Rotate("clock")
             os.system('cls')
             # print(testPy.__tetris__)
             testPy.PrintScreen()
-        elif control == "R":
+        elif control == "l":
             testPy.Rotate("counter")
             os.system('cls')
             testPy.PrintScreen()
-        elif control == "down":
+        elif control == "s":
             testPy.Move("down")
             os.system('cls')
             testPy.PrintScreen()
-        elif control == "left":
+        elif control == "a":
             testPy.Move("left")
             os.system('cls')
             testPy.PrintScreen()
-        elif control == "right":
+        elif control == "d":
             testPy.Move("right")
             os.system('cls')
             testPy.PrintScreen()
@@ -152,6 +153,8 @@ if __name__ == "__main__":
         elif control == "stack":
             print(testPy.__stacks__)
         else:
+            os.system('cls')
             testPy.PrintScreen()
-        control = input("Input Control: ")
+        print("Input Control: Down: S, Left: A, Right: D, Clockwise: J, CounterClockwise: L ")
+        control = msvcrt.getwch()
     
