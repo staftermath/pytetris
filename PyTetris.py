@@ -1,26 +1,24 @@
-import sys, os, copy, random, msvcrt
+import sys, os, copy, random, msvcrt, curses, time
 
 class PyTetris:
     """
     Create my own tetris game using Python
     """
-    def __init__(self, difficulty, size = None):
+    def __init__(self, difficulty, size = None, block = "O"):
         self.__difficulty__ = difficulty
         self.__shapes__ = None
         self.__position__ = None
         self.__score__ = 0
-        self.__block__ = "O "
-        if not size:
-            self.__size__ = [10,22]
-            # Default Size [10, 22]
-        else:
-            self.__size__ = size[:]
-        self.__screen__ =  [[self.__block__ for _ in range(self.__size__[0]+2)]] + \
-                            [[self.__block__] +["  " for _ in range(self.__size__[0])] + [self.__block__]
-                                         for _ in range(self.__size__[1])] + \
-                                [[self.__block__ for _ in range(self.__size__[0]+2)]]
-        self.__stacks__ = [[5, 21], [4, 21], [3, 21], [5, 22]]
-        self.__tetris__ = {"J_l":[5,16]}
+        self.__block__ = block
+        self.__keys__ = {"down": "s", \
+                         "left": "a", \
+                         "right": "d", \
+                         "clockwise": "k", \
+                         "counterclockwise": "j"
+                        }
+        
+        self.__stacks__ = [[10,21]]
+        self.__tetris__ = {"J_l":[5,1]}
         self.__allshapes__ = {"J_d":[[1,0],[0,1],[0,2]], \
                               "J_l":[[-1,0],[-2,0],[0,1]], \
                               "J_u":[[-1,0],[0,-1],[0,-2]], \
@@ -34,6 +32,15 @@ class PyTetris:
                         "left":[-1,0], \
                         "right":[1,0]
                         }
+        if not size:
+            self.__size__ = [10,22]
+            # Default Size [10, 22]
+        else:
+            self.__size__ = size[:]
+        self.__screen__ =  [[self.__block__ for _ in range(self.__size__[0]+2)]] + \
+                            [[self.__block__] +["  " for _ in range(self.__size__[0])] + [self.__block__]
+                                         for _ in range(self.__size__[1])] + \
+                                [[self.__block__ for _ in range(self.__size__[0]+2)]]
 
     def PlotPiece(self, piece):
         ploted = [list(piece.values())[0][:]]
@@ -61,27 +68,104 @@ class PyTetris:
         pass
     
     def Rotate(self, direction):
+        global last
         if direction == "counter":
             direction = 0
-        else:
+        elif direction == "clockwise":
             direction = 1
         shape = list(self.__tetris__.items())[0][0]
         center = list(self.__tetris__.items())[0][1][:]
         newshape = self.__rotate__[shape][0][direction]
         center[0] += self.__rotate__[shape][1][direction][0]
         center[1] += self.__rotate__[shape][1][direction][1]
-        if not self.BoundaryCheck(block=self.PlotPiece({newshape:center}), action=direction):
+        new = self.PlotPiece({newshape:center})
+        if not self.BoundaryCheck(block=new, action=direction):
+            for block in self.FilterBlock(last):
+                screen.addch(block[1], block[0]*2, " ")
+            for block in self.FilterBlock(new):
+                screen.addch(block[1], block[0]*2, self.__block__)
+            last = copy.deepcopy(new)
             self.__tetris__ = {newshape:center}
     
     def Move(self, direction):
-        value = copy.deepcopy(list(self.__tetris__.items())[0])
-        value[1][0] += self.__move__[direction][0]
-        value[1][1] += self.__move__[direction][1]
-        if not self.BoundaryCheck(block=self.PlotPiece({value[0]:value[1]}), action=direction):
-            self.__tetris__ = {value[0]:value[1]}
+        global last
+        newPiece = copy.deepcopy(self.__tetris__)
+        if direction == "down":
+            list(newPiece.values())[0][1] += 1
+        elif direction == "left":
+            list(newPiece.values())[0][0] -= 1
+        elif direction == "right":
+            list(newPiece.values())[0][0] += 1
+        new = self.PlotPiece(newPiece)
+        if not self.BoundaryCheck(block=new, action=direction):
+            for block in self.FilterBlock(last):
+                screen.addch(block[1], block[0]*2, " ")
+            for block in self.FilterBlock(new):
+                screen.addch(block[1], block[0]*2, self.__block__)
+            last = copy.deepcopy(new)
+            self.__tetris__ = newPiece
+        else:
+            if direction == "down":
+                controlscreen.addstr(1,1,str(last))
+                controlscreen.refresh()
+                for block in self.FilterBlock(last):
+                    screen.addch(block[1], block[0]*2, " ")
+                last = copy.deepcopy(self.PlotPiece(self.__tetris__))
+                for block in self.__stacks__:
+                    screen.addch(block[1], block[0]*2, self.__block__)
         return None
+
+    def FilterBlock(self, piece):
+        returnPiece = []
+        for block in piece:
+            if block[0] <= 0 or block[0]> self.__size__[0]*2 or block[1] <= 0 or block[1] > self.__size__[1]:
+                break
+            returnPiece.append(block)
+        return returnPiece
     
-    def Remove(self, rows):
+    def Remove(self):
+        stackedRow = {}
+        toRemove = set()
+        emptySet = {x for x in []}
+        for block in self.__stacks__:
+            if str(block[1]) in stackedRow:
+                stackedRow[str(block[1])].add(block[0])
+            else:
+                stackedRow[str(block[1])] = set([block[0]])
+        # controlscreen.addstr(1,1,str(stackedRow))
+        # controlscreen.refresh()
+        keys = copy.copy(list(stackedRow.keys()))
+        for row in keys:
+            if len(stackedRow[row]) == self.__size__[0]:
+                toRemove.add(int(row))
+                del stackedRow[row]
+        # controlscreen.addstr(1,1,str(toRemove))
+        # controlscreen.refresh()
+        if len(toRemove) > 0:
+            for _ in range(6):
+                time.sleep(0.3)
+                #     # twoBlock = {self.__block__, " "}.remove(onscreen)
+                toPaint = [self.__block__," "][_%2]
+                # toPaint = " "
+                for row in toRemove:
+                    screen.addstr(row,1,(" "+toPaint)*self.__size__[0])
+                    screen.refresh()
+                    if _ == 5:
+                        for block in [[_, row] for _ in range(1,self.__size__[0]+1)]:
+                            controlscreen.addstr(20,1,str(block))
+                            controlscreen.refresh()
+                            self.__stacks__.remove(block)
+            for block in self.__stacks__:
+                screen.addch(block[1], block[0]*2, " ")
+            self.__stacks__ = [[x[0],x[1]+1] for x in self.__stacks__]
+        controlscreen.addstr(1,1,str(self.__stacks__))
+        controlscreen.addstr(10,1,str(last))
+        controlscreen.refresh()
+        #     time.sleep(0.3)
+        # newStack = []
+        # for key in stackedRow:
+        #     newStack.extend([[int(key),x] for x in stackedRow[key]])
+        # self.__stacks__ = newStack
         pass
     
     def GenerateBlocks(self):
@@ -92,6 +176,7 @@ class PyTetris:
         pass
     
     def BoundaryCheck(self, block,action):
+        global last
         returnBool = False
         if action != "down":
             for x in block:
@@ -103,12 +188,15 @@ class PyTetris:
                     break
         else:
             for x in block:
-                if x[1]>self.__size__[1] or x in self.__stacks__:
-                    value = list(self.__tetris__.items())[0]
+                if x[1]>=self.__size__[1] or x in self.__stacks__:
+                    # value = copy.deepcopy(list(self.__tetris__.items()))[0]
                     # value[1][1] -=1
-                    self.__stacks__.extend(self.PlotPiece({value[0]:value[1]}))
+                    self.__stacks__.extend(copy.deepcopy(last))
+                    self.Remove()
+                    curses.flushinp()
                     returnBool = True
                     self.GenerateBlocks()
+                    # last = copy.deepcopy(self.PlotPiece(self.__tetris__))
                     break
                 if x[0]<=0 or x[0]>self.__size__[0]: 
                     returnBool = True
@@ -119,42 +207,88 @@ class PyTetris:
         pass
 
 if __name__ == "__main__":
+    tinyblock = "@"
+    testPy = PyTetris(difficulty=3, block = tinyblock)
+    fullscreen = curses.initscr()
+    screen = fullscreen.subwin(0,0)
+    screen.resize(testPy.__size__[1]+1, 2*testPy.__size__[0]+4)
+    controlscreen = fullscreen.subwin(0, 2*testPy.__size__[0]+5)
+    controlscreen.border()
+    controlscreen.refresh()
+    screen.border()
+    screen.keypad(True)
+    screen.nodelay(True)
+    curses.raw()
+    curses.cbreak()
+    curses.noecho()
+    dims = screen.getmaxyx()
+    curses.curs_set(0)
+    screen.refresh()
+    for block in testPy.__stacks__:
+        screen.addch(block[1], block[0]*2, tinyblock)
+    p = -1
+    last = testPy.PlotPiece(testPy.__tetris__)
+    for block in last:
+            # print(block[1])
+            screen.addch(block[1], block[0]*2, tinyblock)
+    while p != ord("q"):
+        p = screen.getch()
+        if p == curses.KEY_DOWN or p == ord(testPy.__keys__["down"]):
+            testPy.Move(direction="down")
+        if p == curses.KEY_LEFT or p == ord(testPy.__keys__["left"]):
+            testPy.Move(direction="left")
+        if p == curses.KEY_RIGHT or p == ord(testPy.__keys__["right"]):
+            testPy.Move(direction="right")
+        # Rotate
+        if p == ord(testPy.__keys__["clockwise"]):
+            testPy.Rotate(direction="clockwise")
+        if p == ord(testPy.__keys__["counterclockwise"]):
+            testPy.Rotate(direction="counter")
+            # list(testPy.__tetris__.values())[0][1] += 1 
+            # new = testPy.PlotPiece(testPy.__tetris__)
+            # for block in last:
+            #     screen.addch(block[1], block[0]*2, " ")
+            # for block in new:
+            #     screen.addch(block[1], block[0]*2, "O")
+            # last = copy.deepcopy(new)
+    curses.endwin()
     os.system('cls')
-    testPy = PyTetris(3)
-    control = "start"
-    while control != "Q":
-        if control == "flush":
-            os.system('cls')
-        elif control == "j":
-            testPy.Rotate("clock")
-            os.system('cls')
-            # print(testPy.__tetris__)
-            testPy.PrintScreen()
-        elif control == "l":
-            testPy.Rotate("counter")
-            os.system('cls')
-            testPy.PrintScreen()
-        elif control == "s":
-            testPy.Move("down")
-            os.system('cls')
-            testPy.PrintScreen()
-        elif control == "a":
-            testPy.Move("left")
-            os.system('cls')
-            testPy.PrintScreen()
-        elif control == "d":
-            testPy.Move("right")
-            os.system('cls')
-            testPy.PrintScreen()
-        elif control == "shape":
-            print(testPy.PlotPiece(testPy.__tetris__))
-        elif control == "screen":
-            print(testPy.__screen__)
-        elif control == "stack":
-            print(testPy.__stacks__)
-        else:
-            os.system('cls')
-            testPy.PrintScreen()
-        print("Input Control: Down: S, Left: A, Right: D, Clockwise: J, CounterClockwise: L ")
-        control = msvcrt.getwch()
+    # os.system('cls')
+    # testPy = PyTetris(3)
+    # control = "start"
+    # while control != "Q":
+    #     if control == "flush":
+    #         os.system('cls')
+    #     elif control == "j":
+    #         testPy.Rotate("clock")
+    #         os.system('cls')
+    #         # print(testPy.__tetris__)
+    #         testPy.PrintScreen()
+    #     elif control == "l":
+    #         testPy.Rotate("counter")
+    #         os.system('cls')
+    #         testPy.PrintScreen()
+    #     elif control == "s":
+    #         testPy.Move("down")
+    #         os.system('cls')
+    #         testPy.PrintScreen()
+    #     elif control == "a":
+    #         testPy.Move("left")
+    #         os.system('cls')
+    #         testPy.PrintScreen()
+    #     elif control == "d":
+    #         testPy.Move("right")
+    #         os.system('cls')
+    #         testPy.PrintScreen()
+    #     elif control == "shape":
+    #         print(testPy.PlotPiece(testPy.__tetris__))
+    #     elif control == "screen":
+    #         print(testPy.__screen__)
+    #     elif control == "stack":
+    #         print(testPy.__stacks__)
+    #     else:
+    #         os.system('cls')
+    #         testPy.PrintScreen()
+    #     print("Input Control: Down: S, Left: A, Right: D, Clockwise: J, CounterClockwise: L ")
+    #     control = msvcrt.getwch()
     
