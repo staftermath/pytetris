@@ -141,7 +141,9 @@ class PyTetris:
                 del stackedRow[row]
         # controlscreen.addstr(1,1,str(toRemove))
         # controlscreen.refresh()
-        if len(toRemove) > 0:
+        toRemove = set(sorted(toRemove))
+        lengthToRemove = len(toRemove)
+        if lengthToRemove > 0:
             for _ in range(6):
                 time.sleep(0.3)
                 #     # twoBlock = {self.__block__, " "}.remove(onscreen)
@@ -157,7 +159,14 @@ class PyTetris:
                             self.__stacks__.remove(block)
             for block in self.__stacks__:
                 screen.addch(block[1], block[0]*2, " ")
-            self.__stacks__ = [[x[0],x[1]+1] for x in self.__stacks__]
+            newStack = []
+            for i in range(lengthToRemove):
+                for x in self.__stacks__:
+                    if x[1] < list(toRemove)[i]:
+                        newStack.append([x[0],x[1]+lengthToRemove-i])
+                    elif x[1] > list(toRemove)[-1]:
+                        newStack.append(x) 
+            self.__stacks__ = copy.deepcopy(newStack)
         controlscreen.addstr(1,1,str(self.__stacks__))
         controlscreen.addstr(10,1,str(last))
         controlscreen.refresh()
@@ -235,15 +244,20 @@ if __name__ == "__main__":
         p = screen.getch()
         if p == curses.KEY_DOWN or p == ord(testPy.__keys__["down"]):
             testPy.Move(direction="down")
+            next
         if p == curses.KEY_LEFT or p == ord(testPy.__keys__["left"]):
             testPy.Move(direction="left")
+            next
         if p == curses.KEY_RIGHT or p == ord(testPy.__keys__["right"]):
             testPy.Move(direction="right")
+            next
         # Rotate
         if p == ord(testPy.__keys__["clockwise"]):
             testPy.Rotate(direction="clockwise")
+            next
         if p == ord(testPy.__keys__["counterclockwise"]):
             testPy.Rotate(direction="counter")
+            next
             # list(testPy.__tetris__.values())[0][1] += 1 
             # new = testPy.PlotPiece(testPy.__tetris__)
             # for block in last:
