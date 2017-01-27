@@ -236,9 +236,40 @@ class PyTetris:
         return "GameOver"
 
 if __name__ == "__main__":
-    tinyblock = "@"
-    testPy = PyTetris(difficulty=2, block = tinyblock)
+    nrows = 30
+    ncols = 60
+    TITLE = "TETRIS PYTHON"
+    AUTHOR = "  - Weiwen GU"
+    POSITION = ncols//2 - len(TITLE)//2
     fullscreen = curses.initscr()
+    fullscreen.resize(nrows, ncols)
+    fullscreen.border()
+    fullscreen.refresh()
+    # dimFull = fullscreen.getmaxyx()
+    fullscreen.addstr(nrows//3, POSITION, TITLE)
+    fullscreen.addstr(nrows//3+1, POSITION, AUTHOR)
+    fullscreen.addstr(nrows//3+2, POSITION, "ENTER DIFFICULTY: ")
+    fullscreen.move(nrows//3+2, POSITION + len("ENTER DIFFICULTY: "))
+    p = fullscreen.getch()
+    while not chr(p).isdigit() or int(chr(p)) not in range(1,10):
+        fullscreen.addstr(nrows//3+3, POSITION, " "*len("ENTER NUM. FROM 1 TO 9"))
+        fullscreen.addstr(nrows//3+3, POSITION, "ENTER NUM. FROM 1 TO 9")
+        fullscreen.move(nrows//3+2, POSITION + len("ENTER DIFFICULTY: "))
+        fullscreen.refresh()
+        p = fullscreen.getch()
+    fullscreen.addstr(nrows//3+3, POSITION, " "*len("ENTER NUM. FROM 1 TO 9"))
+    fullscreen.addstr(nrows//3+3, POSITION, "DIFFICULTY: "+chr(p))
+    fullscreen.refresh()
+    time.sleep(1)
+    fullscreen.clear()
+    fullscreen.refresh()
+    # fullscreen.refresh()
+    curses.noecho()
+    curses.curs_set(0)
+    # fullscreen.refresh()
+    tinyblock = "@"
+    testPy = PyTetris(difficulty=int(chr(p)), block = tinyblock)
+    fullscreen.resize(testPy.__size__[1]+1, 2*testPy.__size__[0]+35)
     screen = fullscreen.subwin(0,0)
     screen.resize(testPy.__size__[1]+1, 2*testPy.__size__[0]+4)
     controlscreen = fullscreen.subwin(5, 30, 0, 2*testPy.__size__[0]+5)
@@ -250,9 +281,7 @@ if __name__ == "__main__":
     screen.border()
     screen.keypad(True)
     screen.nodelay(True)
-    curses.noecho()
     dims = screen.getmaxyx()
-    curses.curs_set(0)
     screen.refresh()
     for block in testPy.__stacks__:
         screen.addch(block[1], block[0]*2, tinyblock)
